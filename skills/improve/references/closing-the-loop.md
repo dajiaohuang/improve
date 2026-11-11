@@ -18,6 +18,8 @@ The founding rule survives unchanged: **the advisor never edits source code.** I
 
 Spawn **one** `general-purpose` subagent with `isolation: "worktree"`. Executor model: default `sonnet`; use what the user named if they named one (`execute 003 haiku`).
 
+Before the executor can edit, have the host create the isolated worktree and capture its starting commit with `git -C <worktree> rev-parse HEAD` as `<execution-base>`. Retain that SHA outside the worktree and pass it in the prompt. The executor's first action must confirm `git rev-parse HEAD` equals `<execution-base>`; if it does not, stop and report the mismatch before editing. Do not infer the base from a clean worktree or accept a base SHA first reported after the work is complete.
+
 The subagent prompt must contain:
 
 1. **The full plan file text, inlined.** The worktree contains only committed files — if `plans/` is uncommitted, the executor can't read it. Never assume; always inline.
@@ -42,6 +44,8 @@ STATUS: COMPLETE | STOPPED
 STEPS: per step — done/skipped + verification command result
 STOPPED BECAUSE: (only if STOPPED) which STOP condition, what was observed
 FILES CHANGED: list
+EXECUTION BASE: <execution-base SHA>
+FINAL HEAD: <final commit SHA>
 NOTES: anything the reviewer should know (deviations, surprises, judgment calls)
 ```
 
@@ -52,8 +56,8 @@ Note on fresh worktrees: they share git history but not `node_modules` or build 
 Review like a tech lead reviewing a PR against the spec — never fix anything yourself:
 
 1. **Re-run every done criterion** in the worktree. Don't trust the executor's report — verify.
-2. **Scope compliance**: `git -C <worktree> diff --stat` against the plan's in-scope list. Any file outside scope fails review, full stop.
-3. **Read the full diff.** Judge it against "Why this matters" (does it solve the actual problem?) and the repo conventions named in the plan (does it look like the rest of the codebase?).
+2. **Scope compliance**: verify the reported final commit matches `git -C <worktree> rev-parse HEAD`, then inspect `git -C <worktree> diff --name-only <execution-base> HEAD --` and `git -C <worktree> status --porcelain=v1 --untracked-files=all` separately. The base-to-HEAD diff covers committed changes; status covers staged, unstaged, and untracked leftovers. Any path outside the plan's in-scope list fails review, full stop.
+3. **Read the full base-to-HEAD diff** with `git -C <worktree> diff <execution-base> HEAD --`. Judge it against "Why this matters" (does it solve the actual problem?) and the repo conventions named in the plan (does it look like the rest of the codebase?).
 4. **Audit the new tests.** Executors game criteria — a test that asserts nothing meaningful passes `pnpm test` and proves nothing. Read what the tests assert.
 
 ### Verdict

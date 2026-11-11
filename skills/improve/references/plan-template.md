@@ -98,6 +98,7 @@ executor's environment. Skip the section otherwise.)
 (Filled from recon — match the repo's observed conventions.)
 
 - Branch: `advisor/NNN-<slug>` (or the repo's branch-naming convention if one is evident)
+- Execution base: the reviewer records the executor worktree's starting `HEAD` before execution and uses that SHA for committed-diff and scope checks.
 - Commit per step or per logical unit; message style: <match repo, e.g. conventional commits — include an example from `git log`>
 - Do NOT push or open a PR unless the operator instructed it.
 
@@ -132,7 +133,8 @@ Machine-checkable. ALL must hold:
 - [ ] `pnpm typecheck` exits 0
 - [ ] `pnpm test` exits 0; new tests for <X> exist and pass
 - [ ] `grep -rn "<old pattern>" src/` returns no matches
-- [ ] No files outside the in-scope list are modified (`git status`)
+- [ ] Committed changes stay in scope: `git diff --name-only <execution-base> HEAD --` lists only in-scope files
+- [ ] Staged, unstaged, and untracked leftovers stay in scope: `git status --porcelain=v1 --untracked-files=all` lists only expected in-scope files
 - [ ] `plans/README.md` status row updated
 
 ## STOP conditions
